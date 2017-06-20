@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Piano</title>
+<style type="text/css">
+body{background-color:#000000;}
+div{position:absolute;}
+canvas{position:absolute;}
+</style>
+<script>
+function menuState(){
+	//width of menu
+	this.x;
+	//height of menu
+	this.y;
+	//scale selected
+	this.v;
+	//zIndex of menu used to hide menu when not in use
+	this.z;
+	//game mode 1-Keyboard (no play route) 2-Simone (random play route) 3-Song Trainer (preset play route)
+	this.m;
+}
+var menu = new menuState;
+menu.z=2;
+var menuUpdate = new menuState;
+
+//default score menu setting
+//** Usage: Instantiate script by calling: var uniquevar=createsoundbite("soundfile1", "fallbackfile2", "fallebacksound3", etc)
+//** Call: uniquevar.playclip() to play sound
+var html5_audiotypes={ "mp3": "audio/mpeg", "ogg": "audio/ogg",}
+function createsoundbite(sound){
+	var html5audio=document.createElement('audio')
+	if (html5audio.canPlayType){ //check support for HTML5 audio
+		for (var i=0; i<arguments.length; i++){
+			var sourceel=document.createElement('source')
+			sourceel.setAttribute('src', arguments[i])
+			if (arguments[i].match(/\.(\w+)$/i))
+				sourceel.setAttribute('type', html5_audiotypes[RegExp.$1])
+			html5audio.appendChild(sourceel)
+		}
+		html5audio.load()
+		html5audio.playclip=function(){
+			html5audio.pause()
+			html5audio.currentTime=0
+			html5audio.play()
+		}
+		return html5audio
+	}
+	else{
+		return {playclip:function(){throw new Error("Your browser doesn't support HTML5 audio unfortunately")}}
+	}
+}
+//Initialize two sound clips with 1 fallback file each:
+var c4=createsoundbite("jazzBass60_c4.ogg", "jazzBass60_c4.mp3")
+var c4s=createsoundbite("jazzBass60_c4s.ogg", "jazzBass60_c4s.mp3")
+var d4=createsoundbite("jazzBass60_d4.ogg", "jazzBass60_d4.mp3")
+var d4s=createsoundbite("jazzBass60_d4s.ogg", "jazzBass60_d4s.mp3")
+var e4=createsoundbite("jazzBass60_e4.ogg", "jazzBass60_e4.mp3")
+var f4=createsoundbite("jazzBass60_f4.ogg", "jazzBass60_f4.mp3")
+var f4s=createsoundbite("jazzBass60_f4s.ogg", "jazzBass60_f4s.mp3")
+var g4=createsoundbite("jazzBass60_g4.ogg", "jazzBass60_g4.mp3")
+var g4s=createsoundbite("jazzBass60_g4s.ogg", "jazzBass60_g4s.mp3")
+var a4=createsoundbite("jazzBass60_a4.ogg", "jazzBass60_a4.mp3")
+var a4s=createsoundbite("jazzBass60_a4s.ogg", "jazzBass60_a4s.mp3")
+var b4=createsoundbite("jazzBass60_b4.ogg", "jazzBass60_b4.mp3")
+//Returns Window Width
+function FindWidth(){let winW;
+	if (document.body && document.body.offsetWidth) {winW = document.body.offsetWidth;}
+	if (document.compatMode=='CSS1Compat' && document.documentElement && document.documentElement.offsetWidth ) {winW = document.documentElement.offsetWidth;}
+	if (window.innerWidth && window.innerHeight) {winW = window.innerWidth;}
+	return winW;
+}
+//Returns Window Height
+function FindHeight(){let winH;
+	if (document.body && document.body.offsetHeight) {winH = document.body.offsetWidth;}
+	if (document.compatMode=='CSS1Compat' && document.documentElement && document.documentElement.offsetHeight) {winH = document.documentElement.offsetHeight;}
+	if (window.innerHeight) {winH = window.innerHeight;}
+	return winH;
+}
+function roller(){
+	let notes;
+	let count=toneArray.length;
+	notes=toneArray.shift();
+	if(notes){playNote(notes,count);}
+	else{clearInterval(myInterval);}
+}
+
+//object maker: arrays of scale names and notes
+function cat(){
+this.name=[];
+this.scale=[];
+this.darkColour=[];
+this.colour=[];
+this.lightColour=[];
+}
+
+var tiger= new cat;
+tiger.name=["Arabic","Blues","Deminished","Dominant Bebop","Dorian","Enigmatic","Harmonic Minor","Hungarian Minor","Japanese In Sen","Lydian","Major Bebop","Major Pentatonic","Major","Melodic Minor","Minor Pentatonic","Phrygian","Whole Tone"];
+tiger.scale=[[1,2,5,6,8,9,12],[1,3,4,6,7,8,11],[1,3,4,6,7,9,10,12],[1,3,5,6,8,10,11,12],[1,3,4,6,8,10,11],[1,2,5,7,9,11,12],[1,3,4,6,8,9,12],[1,3,4,7,8,9,12],[1,2,6,8,11],[1,3,5,7,8,10,12],[1,3,5,6,8,9,10,12],[1,3,5,8,11],[1,3,5,6,8,10,12],[1,3,4,6,8,10,12],[1,4,6,8,11],[1,2,4,6,8,9,11],[1,3,5,7,9,11]];
+tiger.darkColour=["#DD0000","#DD8800","#DDDD00","#00DD00","#00DDDD","#0000DD","#8800DD","#DD00DD"];
+tiger.colour=["#FF0000","#FFAA00","#FFFF00","#00FF00","#00FFFF","#0000FF","#AA00FF","#FF00FF"];
+tiger.brightColour=["#FF8888","#FFAA88","#FFFFAA","#88FF88","#AAFFFF","#8888FF","#AA88FF","#FFAAFF"];
+menu.v=3;
+menuUpdate.v=3;
+
+//var toneArray=[];
+//makePlayList(toneArray,tiger.scale[menu.v]);
+var myInterval;
+
+
+//make copy of note array for use: x is array to hold the values, y is the array of notes
+function makePlayList(x,y){
+	var h;
+	for (var i=0;i<y.length;i++){
+		h=y[i];
+		x.push(h);
+	}
+}
+
+function playNote(NoteVal,Ident){
+	setBC(Ident,tiger.brightColour[Ident-1]);
+	if(NoteVal==1){ return setTimeout(c4.playclip,100);}
+	if(NoteVal==2){ return setTimeout(c4s.playclip,100);}
+	if(NoteVal==3){ return setTimeout(d4.playclip(),100);}
+	if(NoteVal==4){ return setTimeout(d4s.playclip(),100);}
+	if(NoteVal==5){ return setTimeout(e4.playclip(),100);}
+	if(NoteVal==6){ return setTimeout(f4.playclip(),100);}
+	if(NoteVal==7){ return setTimeout(f4s.playclip(),100);}
+	if(NoteVal==8){ return setTimeout(g4.playclip(),100);}
+	if(NoteVal==9){ return setTimeout(g4s.playclip(),100);}
+	if(NoteVal==10){ return setTimeout(a4.playclip(),100);}
+	if(NoteVal==11){ return setTimeout(a4s.playclip(),100);}
+	if(NoteVal==12){ return setTimeout(b4.playclip(),100);}	
+}
+
+function init(){
+	toneArray=[];
+	makePlayList(toneArray,tiger.scale[menu.v]);
+	
+	let scaleLength=toneArray.length;
+	let x = FindWidth();
+	let y = FindHeight();
+	let noteValue;
+	let keyDepth;
+	let styleVal = "";
+	let BrightColourKey;
+	let ReturnColourKey;
+	let DarkColourKey;
+
+	
+	menu.x=x;
+	menu.y=y;
+	
+	if (y>x){		
+		keyDepth = Math.floor(menu.y/scaleLength);
+		for (let i=1;i<scaleLength+1;i++){
+			makeElement(document.body,"div",i);
+			setWidth(i,menu.x);
+			setHeight(i,keyDepth);
+			setTop(i,keyDepth*(i-1));
+			setLeft(i,0);
+			setBC(i,tiger.colour[i-1]);
+			BrightColourKey="keyBright("+i+")";
+			ReturnColourKey="keyReturn("+i+")";
+			DarkColourKey="keyDark("+i+")";
+
+			noteValue = "playNote("+toneArray.pop()+","+i+")";
+			makeAttribute(document.getElementById(i),"onmousedown",noteValue);
+			makeAttribute(document.getElementById(i),"onmouseenter",DarkColourKey);
+			makeAttribute(document.getElementById(i),"onmouseleave",ReturnColourKey);
+			makeAttribute(document.getElementById(i),"onmouseup",DarkColourKey);
+			}
+	}
+	else if (y<x){
+		keyDepth = Math.floor(menu.x/scaleLength);
+		for (let i=1;i<scaleLength+1;i++){
+			makeElement(document.body,"div",i);
+			setWidth(i,keyDepth);
+			setHeight(i,menu.y);
+			setTop(i,0);
+			setLeft(i,keyDepth*(i-1));
+			setBC(i,tiger.colour[i-1]);
+			BrightColourKey="keyBright("+i+")";
+			ReturnColourKey="keyReturn("+i+")";
+			DarkColourKey="keyDark("+i+")";
+
+			noteValue = "playNote("+toneArray.pop()+","+i+")";
+			makeAttribute(document.getElementById(i),"onmousedown",noteValue);
+			makeAttribute(document.getElementById(i),"onmouseenter",DarkColourKey);
+			makeAttribute(document.getElementById(i),"onmouseleave",ReturnColourKey);
+			makeAttribute(document.getElementById(i),"onmouseup",DarkColourKey);
+
+		}	
+	}
+		
+	makeElement(document.body,"canvas","canvas");
+	makeAttribute(document.getElementById("canvas"),"width",menu.x);
+	makeAttribute(document.getElementById("canvas"),"height",menu.y);
+	setTop("canvas",0);
+	setLeft("canvas",0);
+	setZin("canvas",menu.z);
+	canvas.addEventListener('click', function() {}, false);
+
+	
+makePlayList(toneArray,tiger.scale[menu.v]);
+//myInterval = setInterval(roller,1000);
+
+draw();
+AddClickMinder();
+}
+
+function keyBright(Ident){setBC(Ident,tiger.brightColour[Ident-1]);}
+function keyReturn(Ident){setBC(Ident,tiger.colour[Ident-1]);}
+function keyDark(Ident){setBC(Ident,tiger.darkColour[Ident-1]);}
+
+function wipeBody(){
+	let len=document.body.childNodes.length;
+
+	for (let i=0;i<len;i++){
+		document.body.removeChild(document.body.firstChild);		
+	}
+init();
+}
+
+//Display Functions - V
+//create elements 
+function makeElement(LocName,EleName,Ident){var holder = document.createElement(EleName);holder.id = Ident;LocName.appendChild(holder);}
+function makeAttribute(LocName,AttName,AttVal){LocName.setAttribute(AttName,AttVal);}
+//set attributes
+function setHeight(Ident,h){document.getElementById(Ident).style.height=h+"px";}
+function setWidth(Ident,w){document.getElementById(Ident).style.width=w+"px";}
+function setZin(Ident,z){document.getElementById(Ident).style.zIndex=z;}
+function setTop(Ident,t){document.getElementById(Ident).style.top=t+"px";}
+function setLeft(Ident,lft){document.getElementById(Ident).style.left=lft+"px";}
+function setBC(Ident,bc){document.getElementById(Ident).style.backgroundColor=bc;}
+
+function draw(){
+	var c = document.getElementById('canvas');
+	var ctx = c.getContext('2d');
+	ctx.globalAlpha=.8;
+	backgroundFill(ctx,0,0,menu.x,menu.y,"#880088");
+	var topY=Math.floor(menu.y/7);
+	var botY=Math.floor((menu.y/7*6))
+	var lefX=Math.floor(menu.x/5);
+	var rigX=Math.floor((menu.x/9)*7);
+	var radiusLen=Math.floor(menu.y/12);
+	var rotRadian=Math.PI*2;
+	ctx.globalAlpha=.7;		
+	ctx.beginPath();
+	ctx.arc((menu.x/10),(menu.y/2),Math.floor((menu.x+menu.y)/2.75),0,Math.PI*2,true);
+	ctx.fillStyle="rgb(80,255,80)";
+	ctx.fill();
+	//up button	
+	MakeButton(ctx,1,lefX,topY,radiusLen,rotRadian,"rgb(255,255,255)");
+	//down button
+	MakeButton(ctx,1,lefX,botY,radiusLen,rotRadian,"rgb(255,255,255)");
+	//accept button
+	MakeButton(ctx,1,rigX,topY,radiusLen,rotRadian,"rgb(255,255,255)");
+	//decline button
+	//MakeButton(ctx,1,rigX,botY,radiusLen,rotRadian,"rgb(255,255,255)");	
+	//label
+	WhiteTextFont(ctx);
+	ctx.globalAlpha=1;
+	ctx.fillText(tiger.name[menuUpdate.v],menu.x/100,Math.floor((menu.y/7)*4));
+}
+
+//creates circular buttons in canvas
+function MakeButton(ctx,alpha,x,y,rad,rot,styleIT){
+	ctx.globalAlpha=alpha;		
+	ctx.beginPath();
+	ctx.arc(x,y,rad,0,rot,true);
+	ctx.fillStyle=styleIT;
+	ctx.fill();
+}
+
+//moves up menu options
+function selectUp(x,y){
+if (((menu.x/5)-(menu.y/12))<=x&&((menu.x/5)+(menu.y/12))>=x&&(Math.floor(menu.y/7)-(menu.y/12))<=y&&(Math.floor(menu.y/7)+(menu.y/12))>=y&&menuUpdate.v!=0){
+	//clear text screen
+	clearScreen(0,0,menu.x,menu.y);
+	//console.log(menu.v);
+	menuUpdate.v=menuUpdate.v-1;
+	draw();
+	}
+}
+
+//moves down menu options
+function selectDown(x,y){
+if (((menu.x/5)-(menu.y/12))<=x&&((menu.x/5)+(menu.y/12))>=x&&(Math.floor((menu.y/7)*6)-(menu.y/12))<=y&&(Math.floor((menu.y/7)*6)+(menu.y/12))>=y&&menuUpdate.v!=tiger.name.length-1){
+	//clear text screen
+	clearScreen(0,0,menu.x,menu.y);
+	//console.log(menu.v);
+	menuUpdate.v=menuUpdate.v+1;
+	draw();
+	}
+}
+
+//confirms selection from the scale menu
+function selectAccept(x,y){
+var xPos=Math.floor((menu.x/9)*7);
+var yPos=Math.floor((menu.y/7));
+var radLen=Math.floor((menu.y/12));
+
+if (x<=xPos+radLen&&x>=xPos-radLen&&y<=yPos+radLen&&y>=yPos-radLen){
+	menu.z=-5;
+	menu.v=menuUpdate.v;
+	wipeBody();
+	}
+}
+
+//adds a click minder to capture interaction with the canvas and run button tools
+function AddClickMinder(){
+	// Add event listener for `click` events.
+	document.getElementById('canvas').addEventListener('click', function(event) {
+    var x = event.pageX;
+    var y = event.pageY;
+		//console.log("x "+x+" y "+y);
+		setTimeout(selectUp(x,y),500);
+		setTimeout(selectDown(x,y),500);
+		setTimeout(selectAccept(x,y),500);
+	}, false);
+}
+
+function clearScreen(i,j,k,m){document.getElementById('canvas').getContext('2d').clearRect(i,j,k,m);}
+function WhiteTextFont(x){var c=Math.floor((menu.x+menu.y)/20);x.font=c+"px Helvetica, sans-serif";x.fillStyle="rgb(255,255,255)";};
+function backgroundFill(x,i,j,k,m,s){x.fillStyle=s;x.fillRect(i,j,k,m);}
+</script>
+</head>
+<body onLoad=init(); onResize=setTimeout(wipeBody(),20);>
+</body>
+</html> 
